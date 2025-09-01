@@ -6,6 +6,8 @@ License: GPL-3.0 License
 import argparse
 import os
 import sys
+from typing import List
+
 from reversebox.common.logger import get_logger
 from reversebox.io_files.file_handler import FileHandler
 
@@ -24,6 +26,43 @@ def export_data(loc_file_path: str, ini_file_path: str) -> None:
     if signature != "LOCH":
         raise Exception("Invalid EA Loc file!")
 
+    loc_file.read_uint32()  # header size
+    flags: int = loc_file.read_uint32()
+    number_of_locl_chunks = loc_file.read_uint32()
+    base_offset: int = loc_file.read_uint32()
+
+    if flags == 1:
+        loc_file.read_str(4, "utf8")  # chunk signature (LOCI)
+        loc_file.read_uint32()  # chunk size
+        loc_file.read_uint32()  # string count
+        loc_file.read_uint32()  # nulls
+
+    for i in range(number_of_locl_chunks):
+        chunk_signature = loc_file.read_str(4, "utf8")  # chunk signature (LOCL)
+        if chunk_signature != "LOCL":
+            raise Exception("Invalid LOCL chunk signature!")
+
+        loc_file.read_uint32()  # chunk size
+        loc_file.read_uint32()  # language ID
+        number_of_strings: int = loc_file.read_uint32()
+        string_offset_list: List[int] = []
+
+        for j in range(number_of_strings):
+            string_offset: int = loc_file.read_uint32()
+            string_offset_list.append(string_offset + base_offset)
+
+        total_file_size: int = loc_file.get_file_size()
+        string_offset_list.append(total_file_size)
+
+        strings_list: List[str] = []
+        for k in range(number_of_strings):
+            string_start_position: int = string_offset_list[k]
+            string_end_position: int = string_offset_list[k+1]
+            string_length: int = string_end_position - string_start_position
+
+            loc_file.seek(string_start_position)
+            string_entry: str = loc_file.read_bytes(string_length).decode("utf8", errors="ignore").replace("\n", "\\n")
+            strings_list.append(string_entry)
 
     # TODO
 
