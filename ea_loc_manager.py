@@ -13,6 +13,24 @@ from reversebox.io_files.file_handler import FileHandler
 
 logger = get_logger(__name__)
 
+control_codes_mapping: dict = {
+    b'\x1B\x68': b'<COLOR_CODE>',
+    b'\x80': b'<HP_KEY1>',
+    b'\x86': b'<HP_KEY2>',
+    b'\x8A': b'<HP_KEY3>',
+    b'\x8F': b'<HP_KEY4>',
+    b'\x90': b'<HP_KEY5>',
+    b'\x83': b'<HP_KEY6>',
+    b'\x81': b'<HP_KEY7>',
+    b'\x82': b'<HP_KEY8>',
+    b'\x88': b'<HP_KEY9>',
+    b'\x85': b'<HP_KEY10>',
+    b'\x87': b'<HP_KEY11>',
+    b'\xA9': b'<COPYRIGHT_CODE>',
+}
+
+control_codes_backward_mapping = {v: k for k, v in control_codes_mapping.items()}
+
 
 def export_data(loc_file_path: str, ini_file_path: str) -> None:
     """
@@ -25,6 +43,8 @@ def export_data(loc_file_path: str, ini_file_path: str) -> None:
 
     if signature != "LOCH":
         raise Exception("Invalid EA Loc file!")
+
+    ini_file = open(ini_file_path, "wt")
 
     loc_file.read_uint32()  # header size
     flags: int = loc_file.read_uint32()
@@ -61,8 +81,14 @@ def export_data(loc_file_path: str, ini_file_path: str) -> None:
             string_length: int = string_end_position - string_start_position
 
             loc_file.seek(string_start_position)
-            string_entry: str = loc_file.read_bytes(string_length).decode("utf8", errors="ignore").replace("\n", "\\n")
+            string_entry_bytes: bytes = loc_file.read_bytes(string_length)
+            for k, v in control_codes_mapping.items():
+                string_entry_bytes = string_entry_bytes.replace(k, v)
+            string_entry: str = string_entry_bytes.decode("utf8", errors="strict").replace("\n", "\\n")
+
             strings_list.append(string_entry)
+            # TODO
+            ini_file.write(string_entry + "\n")
 
     # TODO
 
