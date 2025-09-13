@@ -15,82 +15,97 @@ logger = get_logger(__name__)
 
 control_codes_mapping: dict = {
     b'\x1B\x68': b'<COLOR_CODE>',
-    b'\x80': b'<HP_KEY1>',
-    b'\x86': b'<HP_KEY2>',
-    b'\x8A': b'<HP_KEY3>',
-    b'\x8F': b'<HP_KEY4>',
-    b'\x90': b'<HP_KEY5>',
-    b'\x83': b'<HP_KEY6>',
-    b'\x81': b'<HP_KEY7>',
-    b'\x82': b'<HP_KEY8>',
-    b'\x88': b'<HP_KEY9>',
-    b'\x85': b'<HP_KEY10>',
-    b'\x87': b'<HP_KEY11>',
+    b'\x80': b'<LOC_KEY1>',
+    b'\x86': b'<LOC_KEY2>',
+    b'\x8A': b'<LOC_KEY3>',
+    b'\x8F': b'<LOC_KEY4>',
+    b'\x90': b'<LOC_KEY5>',
+    b'\x83': b'<LOC_KEY6>',
+    b'\x81': b'<LOC_KEY7>',
+    b'\x82': b'<LOC_KEY8>',
+    b'\x88': b'<LOC_KEY9>',
+    b'\x85': b'<LOC_KEY10>',
+    b'\x87': b'<LOC_KEY11>',
     b'\xA9': b'<COPYRIGHT_CODE>',
 }
 
 control_codes_backward_mapping = {v: k for k, v in control_codes_mapping.items()}
 
 
-def export_data(loc_file_path: str, ini_file_path: str) -> None:
+def export_data(loc_file_path: str, ini_file_path: str, string_encoding: str) -> None:
     """
     Function for exporting data
     """
     logger.info("Starting export data...")
 
     loc_file = FileHandler(loc_file_path, "rb")
-    signature = loc_file.read_str(4, "utf8")
+    total_file_size: int = loc_file.get_file_size()
+    if total_file_size < 4:
+        raise Exception("LOC file is too small!")
 
-    if signature != "LOCH":
-        raise Exception("Invalid EA Loc file!")
+    chunk_signature: bytes = loc_file.read_bytes(4)
 
-    ini_file = open(ini_file_path, "wt")
+    if chunk_signature != b'LOCH':
+        raise Exception("Invalid LOCH chunk signature!")
 
-    loc_file.read_uint32()  # header size
+    ini_file = open(ini_file_path, "wt", encoding=string_encoding)
+
+    loc_file.read_uint32()  # chunk size
     flags: int = loc_file.read_uint32()
     number_of_locl_chunks = loc_file.read_uint32()
-    base_offset: int = loc_file.read_uint32()
+    locl_chunk_offsets: List[int] = []
+    for i in range(number_of_locl_chunks):
+        locl_offset: int = loc_file.read_uint32()
+        locl_chunk_offsets.append(locl_offset)
 
     if flags == 1:
-        loc_file.read_str(4, "utf8")  # chunk signature (LOCI)
+        chunk_signature = loc_file.read_bytes(4)  # chunk signature (LOCI)
+        if chunk_signature != b'LOCI':
+            raise Exception("Invalid LOCI chunk signature!")
         loc_file.read_uint32()  # chunk size
-        loc_file.read_uint32()  # string count
+        index_count: int = loc_file.read_uint32()  # index count
         loc_file.read_uint32()  # nulls
+        for i in range(index_count):
+            loc_file.read_uint16()
+            loc_file.read_uint16()
 
     for i in range(number_of_locl_chunks):
-        chunk_signature = loc_file.read_str(4, "utf8")  # chunk signature (LOCL)
-        if chunk_signature != "LOCL":
+        locl_start_offset: int = loc_file.get_position()
+        chunk_signature = loc_file.read_bytes(4)  # chunk signature (LOCL)
+        if chunk_signature != b'LOCL':
             raise Exception("Invalid LOCL chunk signature!")
 
-        loc_file.read_uint32()  # chunk size
-        loc_file.read_uint32()  # language ID
+        locl_unique_id: str = f"LOCL_CHUNK_{i}"
+        ini_file.write(f"[{locl_unique_id}]\n")
+
+        locl_chunk_size: int = loc_file.read_uint32()  # chunk size
+        loc_file.read_uint32()  # nulls
         number_of_strings: int = loc_file.read_uint32()
         string_offset_list: List[int] = []
+        locl_end_offset: int = locl_start_offset + locl_chunk_size
 
         for j in range(number_of_strings):
             string_offset: int = loc_file.read_uint32()
-            string_offset_list.append(string_offset + base_offset)
+            string_offset_list.append(string_offset + locl_chunk_offsets[i])
 
-        total_file_size: int = loc_file.get_file_size()
-        string_offset_list.append(total_file_size)
+        string_offset_list.append(locl_end_offset)
 
         strings_list: List[str] = []
-        for k in range(number_of_strings):
-            string_start_position: int = string_offset_list[k]
-            string_end_position: int = string_offset_list[k+1]
+        for s in range(number_of_strings):
+            string_start_position: int = string_offset_list[s]
+            string_end_position: int = string_offset_list[s+1]
             string_length: int = string_end_position - string_start_position
 
             loc_file.seek(string_start_position)
             string_entry_bytes: bytes = loc_file.read_bytes(string_length)
             for k, v in control_codes_mapping.items():
                 string_entry_bytes = string_entry_bytes.replace(k, v)
-            string_entry: str = string_entry_bytes.decode("utf8", errors="strict").replace("\n", "\\n")
+            string_entry: str = string_entry_bytes.decode(string_encoding, errors="strict").replace("\n", "\\n").rstrip('\x00')
 
+            # logger.info(f"[{string_start_position}] AAA: " + string_entry)
+            unique_string_id: str = locl_unique_id + f"_STRING_{s}"
             strings_list.append(string_entry)
-            # TODO
-            ini_file.write(string_entry + "\n")
-
-    # TODO
+            ini_file.write(unique_string_id + "=" + string_entry + "\n")
 
     logger.info("Text exported successfully...")
     return
@@ -111,6 +126,8 @@ def main():
     group.add_argument("-e", "--export", nargs=2, metavar=("loc_file_path", "ini_file_path"), help="Export from LOC file")
     group.add_argument("-i", "--import", nargs=2, metavar=("ini_file_path", "loc_file_path"), help="Import to LOC file")
 
+    parser.add_argument("-enc", "--encoding", default="utf8", help="Encoding to use (default: utf8)")
+
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
@@ -124,7 +141,7 @@ def main():
         if not os.path.isfile(loc_path):
             logger.error(f"[ERROR] File does not exist: {loc_path}")
             sys.exit(1)
-        export_data(loc_path, ini_path)
+        export_data(loc_path, ini_path, args.encoding)
 
     elif getattr(args, "import"):
         ini_path, loc_path = getattr(args, "import")
