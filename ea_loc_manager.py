@@ -36,7 +36,8 @@ def export_data(loc_file_path: str, ini_file_path: str, string_encoding: str) ->
     """
     Function for exporting data
     """
-    logger.info("Starting export data...")
+    logger.info(f"Starting export data from \"{os.path.basename(loc_file_path)}\" file...")
+    logger.info(f"Text encoding set to: {string_encoding}")
 
     loc_file = FileHandler(loc_file_path, "rb")
     total_file_size: int = loc_file.get_file_size()
@@ -107,7 +108,7 @@ def export_data(loc_file_path: str, ini_file_path: str, string_encoding: str) ->
             strings_list.append(string_entry)
             ini_file.write(unique_string_id + "=" + string_entry + "\n")
 
-    logger.info("Text exported successfully...")
+    logger.info(f"Text from file \"{os.path.basename(loc_file_path)}\" exported successfully...")
     return
 
 
@@ -126,7 +127,10 @@ def main():
     group.add_argument("-e", "--export", nargs=2, metavar=("loc_file_path", "ini_file_path"), help="Export from LOC file")
     group.add_argument("-i", "--import", nargs=2, metavar=("ini_file_path", "loc_file_path"), help="Import to LOC file")
 
-    parser.add_argument("-enc", "--encoding", default="utf8", help="Encoding to use (default: utf8)")
+    parser.add_argument("-enc", "--encoding",
+                        default="utf8",
+                        choices=["utf8", "utf16", "latin-1"],
+                        help="Encoding to use (default: utf8)")
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -138,10 +142,12 @@ def main():
 
     if getattr(args, "export"):
         loc_path, ini_path = getattr(args, "export")
+        encoding_type: str = getattr(args, "encoding")
+
         if not os.path.isfile(loc_path):
             logger.error(f"[ERROR] File does not exist: {loc_path}")
             sys.exit(1)
-        export_data(loc_path, ini_path, args.encoding)
+        export_data(loc_path, ini_path, encoding_type)
 
     elif getattr(args, "import"):
         ini_path, loc_path = getattr(args, "import")
