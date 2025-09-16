@@ -13,3 +13,5 @@ If you know any other EA game that is supported by my tool, please let me know o
 | Harry Potter and the Chamber of Secrets (PS2)   | <center>✔️</center> | <center>❌</center> |
 | Medal Of Honor: European Assault (XBOX Classic) | <center>✔️</center> | <center>❌</center> |
 | SSX 3 (PS2)                                     | <center>❌</center>  | <center>❌</center> |
+| SSX On Tour (PS2)                               | <center>✔️</center> | <center>❌</center> |
+| SSX Tricky (PS2)                                | <center>✔️</center> | <center>❌</center> |

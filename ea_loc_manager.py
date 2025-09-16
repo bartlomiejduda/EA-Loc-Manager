@@ -101,7 +101,15 @@ def export_data(loc_file_path: str, ini_file_path: str, string_encoding: str) ->
             string_entry_bytes: bytes = loc_file.read_bytes(string_length)
             for k, v in control_codes_mapping.items():
                 string_entry_bytes = string_entry_bytes.replace(k, v)
-            string_entry: str = string_entry_bytes.decode(string_encoding, errors="strict").replace("\n", "\\n").rstrip('\x00')
+
+            while 1:
+                try:
+                    # try to decode as it is
+                    string_entry: str = string_entry_bytes.decode(string_encoding, errors="strict").replace("\n", "\\n").rstrip('\x00')
+                    break
+                except Exception:
+                    # remove 1 padding byte from string
+                    string_entry_bytes = string_entry_bytes[:-1]
 
             # logger.info(f"[{string_start_position}] AAA: " + string_entry)
             unique_string_id: str = locl_unique_id + f"_STRING_{s}"
