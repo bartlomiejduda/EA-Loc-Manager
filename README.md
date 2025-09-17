@@ -1,5 +1,7 @@
 # EA-Loc-Manager
 Tool for parsing LOC files from EA games.<br>
+It allows to extract texts from almost any EA game that uses EA localization files.<br>
+It's designed to help with translation projects.<br><br>
 LOC file format description can be found on [RE Wiki](https://rewiki.miraheze.org/wiki/EA_Games_LOC).
 
 ## Dependencies
