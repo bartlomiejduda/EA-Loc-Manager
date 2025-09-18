@@ -36,7 +36,7 @@ options:
   -i ini_file_path loc_file_path, --import ini_file_path loc_file_path
                         Import to LOC file
   -enc {utf8,utf16,latin-1}, --encoding {utf8,utf16,latin-1}
-                        Encoding to use (default: utf8)
+                        Encoding to use (default: latin-1)
 </pre>
 
 
@@ -50,6 +50,7 @@ If you know any other EA game that is supported by my tool, please let me know o
 |-------------------------------------------------|---------------------|--------------------|
 | Harry Potter and the Chamber of Secrets (PS2)   | <center>✔️</center> | <center>❌</center> |
 | Medal Of Honor: European Assault (XBOX Classic) | <center>✔️</center> | <center>❌</center> |
+| NHL 07 (PSP)                                    | <center>✔️</center> | <center>❌</center> |
 | SSX 3 (PS2)                                     | <center>❌</center>  | <center>❌</center> |
 | SSX On Tour (PS2)                               | <center>✔️</center> | <center>❌</center> |
 | SSX Tricky (PS2)                                | <center>✔️</center> | <center>❌</center> |

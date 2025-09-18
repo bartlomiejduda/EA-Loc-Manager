@@ -14,19 +14,18 @@ from reversebox.io_files.file_handler import FileHandler
 logger = get_logger(__name__)
 
 control_codes_mapping: dict = {
-    b'\x1B\x68': b'<COLOR_CODE>',
+    b'\x1B\x68': b'<LOC_COLOR_CODE>',
     b'\x80': b'<LOC_KEY1>',
-    b'\x86': b'<LOC_KEY2>',
-    b'\x8A': b'<LOC_KEY3>',
-    b'\x8F': b'<LOC_KEY4>',
-    b'\x90': b'<LOC_KEY5>',
-    b'\x83': b'<LOC_KEY6>',
-    b'\x81': b'<LOC_KEY7>',
-    b'\x82': b'<LOC_KEY8>',
-    b'\x88': b'<LOC_KEY9>',
-    b'\x85': b'<LOC_KEY10>',
-    b'\x87': b'<LOC_KEY11>',
-    b'\xA9': b'<COPYRIGHT_CODE>',
+    b'\x81': b'<LOC_CIRCLE_BUTTON>',
+    b'\x82': b'<LOC_SQUARE_BUTTON>',
+    b'\x83': b'<LOC_TRIANGLE_BUTTON>',
+    b'\x85': b'<LOC_KEY5>',
+    b'\x86': b'<LOC_R1_BUTTON>',
+    b'\x87': b'<LOC_KEY7>',
+    b'\x88': b'<LOC_KEY8>',
+    b'\x8A': b'<LOC_HAND_ICON>',
+    b'\x8F': b'<LOC_KEY10>',
+    b'\x90': b'<LOC_KEY11>',
 }
 
 control_codes_backward_mapping = {v: k for k, v in control_codes_mapping.items()}
@@ -36,7 +35,7 @@ def export_data(loc_file_path: str, ini_file_path: str, string_encoding: str) ->
     """
     Function for exporting data
     """
-    logger.info(f"Starting export data from \"{os.path.basename(loc_file_path)}\" file...")
+    logger.info(f"Starting export data from \"{os.path.basename(loc_file_path)}\" file to \"{os.path.basename(ini_file_path)}\" file...")
     logger.info(f"Text encoding set to: {string_encoding}")
 
     loc_file = FileHandler(loc_file_path, "rb")
@@ -116,8 +115,32 @@ def export_data(loc_file_path: str, ini_file_path: str, string_encoding: str) ->
             strings_list.append(string_entry)
             ini_file.write(unique_string_id + "=" + string_entry + "\n")
 
-    logger.info(f"Text from file \"{os.path.basename(loc_file_path)}\" exported successfully...")
+    logger.info(f"Texts from file \"{os.path.basename(loc_file_path)}\" exported to \"{os.path.basename(ini_file_path)}\" file successfully...")
     return
+
+
+def import_data(ini_file_path: str, loc_file_path: str, string_encoding: str) -> None:
+    """
+    Function for importing data
+    """
+    logger.info(f"Starting import data from \"{os.path.basename(ini_file_path)}\" file to \"{os.path.basename(loc_file_path)}\" file...")
+    logger.info(f"Text encoding set to: {string_encoding}")
+
+    ini_file = open(ini_file_path, "rt", encoding=string_encoding)
+
+    locl_chunks_list: list = []
+    locl_chunks_count: int = 0
+    for ini_line in ini_file:
+        if ini_line.startswith("#"):
+            continue
+        elif ini_line.startswith("["):
+            locl_strings: list[str] = []
+            locl_chunks_list.append(locl_strings)
+        else:
+            ini_text = ini_line.rstrip("\n").split("=")[-1]
+            locl_chunks_list[locl_chunks_count].append(ini_text)
+
+    # TODO
 
 
 VERSION_NUM = "v1.0"
@@ -136,9 +159,9 @@ def main():
     group.add_argument("-i", "--import", nargs=2, metavar=("ini_file_path", "loc_file_path"), help="Import to LOC file")
 
     parser.add_argument("-enc", "--encoding",
-                        default="utf8",
+                        default="latin-1",
                         choices=["utf8", "utf16", "latin-1"],
-                        help="Encoding to use (default: utf8)")
+                        help="Encoding to use (default: latin-1)")
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -147,10 +170,10 @@ def main():
     args = parser.parse_args()
 
     logger.info(f"Running {PROGRAM_NAME}...")
+    encoding_type: str = getattr(args, "encoding")
 
     if getattr(args, "export"):
         loc_path, ini_path = getattr(args, "export")
-        encoding_type: str = getattr(args, "encoding")
 
         if not os.path.isfile(loc_path):
             logger.error(f"[ERROR] File does not exist: {loc_path}")
@@ -165,7 +188,8 @@ def main():
         if not os.path.isfile(loc_path):
             logger.error(f"[ERROR] File does not exist: {loc_path}")
             sys.exit(1)
-        # TODO - import function
+        import_data(ini_path, loc_path, encoding_type)
+
     else:
         parser.print_help()
         sys.exit(1)
