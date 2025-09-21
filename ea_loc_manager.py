@@ -14,8 +14,8 @@ from reversebox.io_files.file_handler import FileHandler
 logger = get_logger(__name__)
 
 control_codes_mapping: dict = {
-    b'\x1B\x68': b'<LOC_COLOR_CODE>',
-    b'\x80': b'<LOC_KEY1>',
+    b'\x1B\x68': b'<LOC_INIT_CODE>',
+    b'\x80': b'<LOC_CROSS_BUTTON>',
     b'\x81': b'<LOC_CIRCLE_BUTTON>',
     b'\x82': b'<LOC_SQUARE_BUTTON>',
     b'\x83': b'<LOC_TRIANGLE_BUTTON>',
@@ -128,19 +128,76 @@ def import_data(ini_file_path: str, loc_file_path: str, string_encoding: str) ->
 
     ini_file = open(ini_file_path, "rt", encoding=string_encoding)
 
+    # process INI file
     locl_chunks_list: list = []
     locl_chunks_count: int = 0
     for ini_line in ini_file:
         if ini_line.startswith("#"):
             continue
         elif ini_line.startswith("["):
-            locl_strings: list[str] = []
-            locl_chunks_list.append(locl_strings)
+            locl_binary_strings: list[bytes] = []
+            locl_chunks_list.append(locl_binary_strings)
+            locl_chunks_count += 1
         else:
-            ini_text = ini_line.rstrip("\n").split("=")[-1]
-            locl_chunks_list[locl_chunks_count].append(ini_text)
+            ini_text: str = ini_line.rstrip("\n").split("=")[-1]
+            ini_text_binary: bytes = ini_text.encode(encoding=string_encoding, errors="strict")
+            for k, v in control_codes_backward_mapping.items():
+                ini_text_binary = ini_text_binary.replace(k, v)
+            locl_chunks_list[locl_chunks_count-1].append(ini_text_binary)
 
+    # copy binary data
+    loc_file = FileHandler(loc_file_path, "rb")
+    total_file_size: int = loc_file.get_file_size()
+    if total_file_size < 4:
+        raise Exception("LOC file is too small!")
+
+    loch_chunk_signature: bytes = loc_file.read_bytes(4)
+
+    if loch_chunk_signature != b'LOCH':
+        raise Exception("Invalid LOCH chunk signature!")
+
+    loch_chunk_size: int = loc_file.read_uint32()
+    flags: int = loc_file.read_uint32()
+    loc_file.seek(0)
+    LOCH_CHUNK_DATA: bytes = loc_file.read_bytes(loch_chunk_size)
+    LOCI_CHUNK_DATA: bytes = b''
+
+    if flags == 1:
+        loci_chunk_offset: int = loc_file.get_position()
+        loci_chunk_signature = loc_file.read_bytes(4)  # chunk signature (LOCI)
+        if loci_chunk_signature != b'LOCI':
+            raise Exception("Invalid LOCI chunk signature!")
+        loci_chunk_size: int = loc_file.read_uint32()  # chunk size
+        loc_file.seek(loci_chunk_offset)
+        LOCI_CHUNK_DATA = loc_file.read_bytes(loci_chunk_size)
+
+    loc_file.close()
+
+    # save LOCH/LOCI chunks in LOC file
+    loc_file = FileHandler(loc_file_path, "wb")
+    loc_file.write_bytes(LOCH_CHUNK_DATA)
+    loc_file.write_bytes(LOCI_CHUNK_DATA)
+
+    # save LOCL chunks in LOC file
     # TODO
+    for i in range(locl_chunks_count):
+        locl_chunk_offset: int = loc_file.get_position()
+        loc_file.write_bytes(b'LOCL')
+        loc_file.write_uint32(0)  # chunk size
+        loc_file.write_uint32(0)  # language ID
+        number_of_strings: int = len(locl_chunks_list[i])
+        loc_file.write_uint32(number_of_strings)
+        total_all_str_length: int = 0
+        for s in range(number_of_strings):
+            string_offset: int = locl_chunk_offset + (4 * number_of_strings) + total_all_str_length
+            loc_file.write_uint32(string_offset)
+            total_all_str_length += len(locl_chunks_list[i][s])
+        for ss in range(number_of_strings):
+            loc_file.write_bytes(locl_chunks_list[i][ss])
+
+    loc_file.close()
+    logger.info(f"Texts from file \"{os.path.basename(ini_file_path)}\" imported to \"{os.path.basename(loc_file_path)}\" file successfully...")
+    return
 
 
 VERSION_NUM = "v1.0"
