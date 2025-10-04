@@ -24,7 +24,7 @@ LOC file format description can be found on [RE Wiki](https://rewiki.miraheze.or
    - ```python ea_loc_manager.py <arguments>```
    
    
-# Usage
+## Usage
 
 <pre>
 EA Loc Manager v1.0
@@ -40,7 +40,7 @@ options:
 </pre>
 
 
-# LOC formats support table
+## LOC formats support table
 
 Table below isn't complete. It contains only some example games that I was able to test.
 If you know any other EA game that is supported by my tool, please let me know on GitHub's
@@ -56,7 +56,7 @@ If you know any other EA game that is supported by my tool, please let me know o
 | SSX Tricky (PS2)                                | <center>✔️</center> | <center>❌</center> |
 
 
-# Badges
+## Badges
 ![GitHub](https://img.shields.io/github/license/bartlomiejduda/EA-Loc-Manager?style=plastic)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![GitHub repo size](https://img.shields.io/github/repo-size/bartlomiejduda/EA-Loc-Manager?style=plastic)
